@@ -26,36 +26,54 @@ maciej_kuciara = [
 You can also point to a custom config file with `WALLPIPE_CONFIG=/path/to/config.toml`.
 
 ## Usage
-Run each step; directories default to the current working directory if omitted:
+Run each step; directories default to the current working directory if omitted. Use `uv run` if you manage deps with uv:
 
 ```bash
 # 1) download raw images into per-artist folders
-python download.py                # uses ./_downloaded
+uv run python download.py         # uses ./_downloaded
 # or override
-python download.py /path/to/_downloaded
+uv run python download.py /path/to/_downloaded
 
 # 2) curate landscape >=1920x1080 into a flat folder
-python curate.py                  # uses ./_downloaded -> ./_curated
+uv run python curate.py           # uses ./_downloaded -> ./_curated
 # or override
-python curate.py /path/to/_downloaded /path/to/_curated
+uv run python curate.py /path/to/_downloaded /path/to/_curated
 
 # 3) aesthetic filter curated set into another folder
-python filter.py                  # uses ./_curated -> ./_curated_aesthetic
+uv run python filter.py           # uses ./_curated -> ./_curated_aesthetic
 # or override
-python filter.py /path/to/_curated /path/to/_curated_aesthetic --min-score 5.0
+uv run python filter.py /path/to/_curated /path/to/_curated_aesthetic --min-score 5.0
 ```
 
 ## Development
-- Format: `ruff format .`
-- Lint: `ruff check .`
-- Type check: `pyright`
-- Tests: `pytest`
-- Tests with coverage: `pytest --cov`
-
-Dev dependencies are listed in `requirements-dev.txt`.
+- Preferred (uv):
+  - Install deps + venv: `uv sync --group dev`
+  - Format: `uv run ruff format .`
+  - Lint: `uv run ruff check .`
+  - Type check: `uv run pyright`
+  - Tests: `uv run pytest` (add `--cov` for coverage)
+- Fallback (pip): `pip install -r requirements-dev.txt`; then run commands without `uv run`.
+Dev dependencies and runtime deps are declared in `pyproject.toml`; `requirements-dev.txt` mirrors them for pip users.
 
 ## Continuous Integration
 - GitHub Actions runs on pushes to main/master and all pull requests.
-- Steps: install deps (CPU torch), `ruff check .`, `pyright`, `pytest --cov`; coverage uploaded via Codecov using GitHub OIDC (no long-lived token needed; keep `id-token: write` permissions).
+- Steps: `uv sync --group dev`, `uv run ruff check .`, `uv run pyright`, `uv run pytest --cov`; coverage upload to Codecov (OIDC) is best-effort/non-blocking and will comment on PRs if it fails.
 - Coverage badge (replace `<owner>` with your GitHub user/org):
   - `![Coverage](https://codecov.io/gh/<owner>/wallpipe/branch/main/graph/badge.svg)`
+
+## Automation Ideas (cron)
+You can automate the pipeline with cron on a desktop/server:
+
+- Download monthly (1st of month at 02:00):  
+  `0 2 1 * * /path/to/venv/bin/python /path/to/wallpipe/download.py /path/to/_downloaded >> /var/log/wallpipe-download.log 2>&1`
+
+- Curate weekly (Sundays at 03:00):  
+  `0 3 * * 0 /path/to/venv/bin/python /path/to/wallpipe/curate.py /path/to/_downloaded /path/to/_curated >> /var/log/wallpipe-curate.log 2>&1`
+
+- Filter weekly (Sundays at 03:30):  
+  `30 3 * * 0 /path/to/venv/bin/python /path/to/wallpipe/filter.py /path/to/_curated /path/to/_curated_aesthetic --min-score 5.0 >> /var/log/wallpipe-filter.log 2>&1`
+
+Tips:
+- Use absolute paths for Python, repo, and data dirs.
+- Ensure the venv has `gallery-dl`, `torch`, `transformers`, `simple-aesthetics-predictor`, `Pillow`.
+- Stagger times so curate/filter run after downloads and avoid overlap.

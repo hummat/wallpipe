@@ -3,6 +3,21 @@ name = "wallpipe"
 version = "0.0.0"
 description = "Wallpaper download/curate/filter pipeline"
 requires-python = ">=3.11"
+dependencies = [
+  "pillow>=10.0.0",
+  "torch==2.3.1",
+  "transformers>=4.44.0",
+  "simple-aesthetics-predictor>=0.0.7",
+  "gallery-dl>=1.27.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3.0",
+  "pytest-cov>=5.0.0",
+  "ruff>=0.6.0",
+  "pyright>=1.1.385",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -37,6 +37,6 @@
 ## Agent-Specific Instructions
 - Use `apply_patch` for edits; keep comments minimal and purposeful.
 - Before running tooling, check `git diff --name-only` for `.py`/tooling changes.
-- Run `ruff format`, `ruff check`, `pyright`, `pytest` when Python code or tooling (pyproject, CI, requirements) is touched. For doc-only changes, skip these and state “tests not run (docs-only)” in the handoff.
+- Run `uv run ruff format/check`, `uv run pyright`, `uv run pytest` when Python code or tooling (pyproject, CI, requirements) is touched. For doc-only changes, skip these and state “tests not run (docs-only)” in the handoff.
 - When altering behavior, tooling, or workflow, update both `README.md` and `AGENTS.md` to keep user and contributor docs in sync.
-- Codecov: CI uses Codecov action v5 with GitHub OIDC (no token needed); keep `id-token: write` permission in the workflow.
+ - Codecov: CI uses Codecov action v5 with GitHub OIDC (no token needed); keep `id-token: write`. Step is `continue-on-error` and posts a PR comment on failure; investigate if uploads fail repeatedly.
