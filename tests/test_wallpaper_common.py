@@ -10,10 +10,10 @@ def reload_wallpaper_common():
     Helper to reload module with fresh caches.
     Ensures repo root is on sys.path so the module is importable.
     """
-    sys.modules.pop("wallpaper_common", None)
+    sys.modules.pop("common", None)
     if str(REPO_ROOT) not in sys.path:
         sys.path.insert(0, str(REPO_ROOT))
-    return importlib.import_module("wallpaper_common")
+    return importlib.import_module("common")
 
 
 def test_is_image_file_extensions():

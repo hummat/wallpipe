@@ -17,8 +17,8 @@ from typing import Dict, List, Optional, Tuple
 
 # Default paths (can be overridden by config)
 DEFAULT_WALLPAPER_ROOT: Path = Path.home() / "Pictures" / "wallpaper"
-DEFAULT_DOWNLOAD_ROOT: Path = DEFAULT_WALLPAPER_ROOT / "_downloaded"
-DEFAULT_CURATED_DIR: Path = DEFAULT_WALLPAPER_ROOT / "_curated"
+DEFAULT_DOWNLOAD_ROOT: Path = DEFAULT_WALLPAPER_ROOT / "downloaded"
+DEFAULT_CURATED_DIR: Path = DEFAULT_WALLPAPER_ROOT / "curated"
 
 # Config lookup locations (first one that exists wins)
 CONFIG_PATHS: Tuple[Path, ...] = (
@@ -76,9 +76,9 @@ def resolve_paths(
         wallpaper_root or paths_cfg.get("wallpaper_root", DEFAULT_WALLPAPER_ROOT)
     ).expanduser()
     dl_root = Path(
-        download_root or paths_cfg.get("download_root", wall_root / "_downloaded")
+        download_root or paths_cfg.get("download_root", wall_root / "downloaded")
     ).expanduser()
-    curated = Path(curated_dir or paths_cfg.get("curated_dir", wall_root / "_curated")).expanduser()
+    curated = Path(curated_dir or paths_cfg.get("curated_dir", wall_root / "curated")).expanduser()
 
     return {
         "wallpaper_root": wall_root,
@@ -120,7 +120,6 @@ DEFAULT_ARTIST_SOURCES: Dict[str, List[str]] = {
     "maciej_kuciara": [
         "https://www.artstation.com/maciej",
         "https://www.behance.net/maciejkuciara",
-        "https://tiger1313.deviantart.com/",
     ],
     # Jama Jurabaev
     "jama_jurabaev": [

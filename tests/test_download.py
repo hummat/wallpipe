@@ -1,49 +1,38 @@
-from typing import Iterable, Mapping
+import shutil
+import subprocess
 
-import download
-
-
-class DummyCompleted:
-    def __init__(self, cmd: list[str]):
-        self.cmd = cmd
+from download import run_gallery_dl
 
 
-def test_download_artists_invokes_gallery_dl(tmp_path, monkeypatch):
-    calls: list[list[str]] = []
+def test_run_gallery_dl_adds_abort(monkeypatch, tmp_path):
+    monkeypatch.setattr(shutil, "which", lambda _: "/usr/bin/gallery-dl")
+
+    captured = {}
 
     def fake_run(cmd, check):
-        calls.append(cmd)
-        return DummyCompleted(cmd)
+        captured["cmd"] = cmd
+        assert check is True
 
-    monkeypatch.setattr(download.subprocess, "run", fake_run)
+    monkeypatch.setattr(subprocess, "run", fake_run)
 
-    artists: Mapping[str, Iterable[str]] = {"a": ["http://example.com/1", "http://example.com/2"]}
-    target = tmp_path / "_dl"
-    download.download_artists(artists, download_root=target)
+    run_gallery_dl(tmp_path, "http://example.com/foo", abort_after=15)
 
-    assert target.is_dir()
-    assert len(calls) == 2
-    assert all(cmd[0].endswith("gallery-dl") for cmd in calls)
-    assert str(target / "a") in calls[0]
+    assert captured["cmd"][:3] == ["/usr/bin/gallery-dl", "-d", str(tmp_path)]
+    assert captured["cmd"][-3:] == ["--abort", "15", "http://example.com/foo"]
 
 
-def test_download_handles_missing_binary(tmp_path, monkeypatch, capsys):
+def test_run_gallery_dl_allows_disable_abort(monkeypatch, tmp_path):
+    monkeypatch.setattr(shutil, "which", lambda _: "/usr/bin/gallery-dl")
+
+    captured = {}
+
     def fake_run(cmd, check):
-        raise FileNotFoundError("nope")
+        captured["cmd"] = cmd
+        assert check is True
 
-    monkeypatch.setattr(download.subprocess, "run", fake_run)
+    monkeypatch.setattr(subprocess, "run", fake_run)
 
-    download.download_artists({"a": ["http://example.com"]}, download_root=tmp_path)
-    out = capsys.readouterr().out
-    assert "gallery-dl" in out and "not found" in out
+    run_gallery_dl(tmp_path, "http://example.com/bar", abort_after=0)
 
-
-def test_download_handles_called_process_error(tmp_path, monkeypatch, capsys):
-    def fake_run(cmd, check):
-        raise download.subprocess.CalledProcessError(3, cmd)
-
-    monkeypatch.setattr(download.subprocess, "run", fake_run)
-
-    download.download_artists({"a": ["http://example.com"]}, download_root=tmp_path)
-    out = capsys.readouterr().out
-    assert "failed for a" in out
+    assert "--abort" not in captured["cmd"]
+    assert captured["cmd"][-1] == "http://example.com/bar"

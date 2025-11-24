@@ -199,6 +199,11 @@ htmlcov/
 # Local config
 wallpipe.toml
 
+# Pipeline outputs (default locations)
+downloaded/
+curated/
+filtered/
+
 # PyPI configuration file
 .pypirc
 

@@ -11,14 +11,13 @@ Create `wallpipe.toml` in the repo root **or** `~/.config/wallpipe/config.toml`:
 # Defaults to ~/Pictures/wallpaper if omitted
 wallpaper_root = "/home/you/Pictures/wallpaper"
 # download_root and curated_dir default to subfolders of wallpaper_root if omitted
-# download_root = "/home/you/Pictures/wallpaper/_downloaded"
-# curated_dir  = "/home/you/Pictures/wallpaper/_curated"
+# download_root = "/home/you/Pictures/wallpaper/downloaded"
+# curated_dir  = "/home/you/Pictures/wallpaper/curated"
 
 [artists]
 maciej_kuciara = [
   "https://www.artstation.com/maciej",
-  "https://www.behance.net/maciejkuciara",
-  "https://tiger1313.deviantart.com/"
+  "https://www.behance.net/maciejkuciara"
 ]
 # Add or replace artist slugs freely
 ```
@@ -30,19 +29,25 @@ Run each step; directories default to the current working directory if omitted. 
 
 ```bash
 # 1) download raw images into per-artist folders
-uv run python download.py         # uses ./_downloaded
+uv run python download.py         # uses ./downloaded
 # or override
-uv run python download.py /path/to/_downloaded
+uv run python download.py /path/to/downloaded
+# downloader stops after 20 consecutive skipped files to avoid long “already downloaded” runs;
+# tweak with --abort-after N or disable with --abort-after 0
 
 # 2) curate landscape >=1920x1080 into a flat folder
-uv run python curate.py           # uses ./_downloaded -> ./_curated
+uv run python curate.py           # uses ./downloaded -> ./curated
 # or override
-uv run python curate.py /path/to/_downloaded /path/to/_curated
+uv run python curate.py /path/to/downloaded /path/to/curated
+# optional: drop low-saturation (black/white) images
+# uv run python curate.py --skip-bw
+# optional: fuzzy dedup by perceptual hash (Hamming distance)
+# uv run python curate.py --dedup-hamming 5
 
 # 3) aesthetic filter curated set into another folder
-uv run python filter.py           # uses ./_curated -> ./_curated_aesthetic
+uv run python filter.py           # uses ./curated -> ./filtered
 # or override
-uv run python filter.py /path/to/_curated /path/to/_curated_aesthetic --min-score 5.0
+uv run python filter.py /path/to/curated /path/to/filtered --min-score 6.0
 ```
 
 ## Development
@@ -65,13 +70,28 @@ Dev dependencies and runtime deps are declared in `pyproject.toml`; `requirement
 You can automate the pipeline with cron on a desktop/server:
 
 - Download monthly (1st of month at 02:00):  
-  `0 2 1 * * /path/to/venv/bin/python /path/to/wallpipe/download.py /path/to/_downloaded >> /var/log/wallpipe-download.log 2>&1`
+  `0 2 1 * * /path/to/venv/bin/python /path/to/wallpipe/download.py /path/to/downloaded >> /var/log/wallpipe-download.log 2>&1`
 
 - Curate weekly (Sundays at 03:00):  
-  `0 3 * * 0 /path/to/venv/bin/python /path/to/wallpipe/curate.py /path/to/_downloaded /path/to/_curated >> /var/log/wallpipe-curate.log 2>&1`
+  `0 3 * * 0 /path/to/venv/bin/python /path/to/wallpipe/curate.py /path/to/downloaded /path/to/curated >> /var/log/wallpipe-curate.log 2>&1`
 
 - Filter weekly (Sundays at 03:30):  
-  `30 3 * * 0 /path/to/venv/bin/python /path/to/wallpipe/filter.py /path/to/_curated /path/to/_curated_aesthetic --min-score 5.0 >> /var/log/wallpipe-filter.log 2>&1`
+  `30 3 * * 0 /path/to/venv/bin/python /path/to/wallpipe/filter.py /path/to/curated /path/to/filtered --min-score 6.0 >> /var/log/wallpipe-filter.log 2>&1`
+
+### Keyword filtering & thresholds
+- Defaults block two buckets:
+  - General (vehicles/war/robots/bikes + common game-asset cues like wireframe/normal map) at threshold **0.80**
+  - NSFW/explicit terms at threshold **0.70**
+  (Full lists live in `filter.py`; override via CLI.)
+- Matching uses CLIP text/image similarity with richer prompts (e.g., “explicit photo of …” for NSFW).
+- Customize with:
+  - `--block-keyword-general foo` / `--block-keyword-nsfw bar`
+  - `--block-threshold-general 0.85` / `--block-threshold-nsfw 0.92`
+  - Legacy `--block-threshold` still applies one value to both lists.
+- Threshold rule of thumb: higher = blocks fewer images (more permissive); lower = blocks more (more aggressive). Calibrate on a small sample via `--dry-run`.
+- Aesthetics keep threshold default is **6.0**; change with `--min-score`.
+- Curate step can skip low-saturation (B/W) images with `--skip-bw` or a custom `--min-saturation 0.08`.
+- Curate can also fuzzy-dedup per artist via `--dedup-hamming N` (aHash distance; try 5–10).
 
 Tips:
 - Use absolute paths for Python, repo, and data dirs.

@@ -26,7 +26,7 @@ from aesthetics_predictor import AestheticsPredictorV1
 from PIL import Image
 from transformers import CLIPModel, CLIPProcessor
 
-from wallpaper_common import is_image_file
+from common import is_image_file
 
 # Aesthetic scoring model (CLIP + MLP head)
 MODEL_ID: str = "shunk031/aesthetics-predictor-v1-vit-large-patch14"
@@ -34,21 +34,70 @@ MODEL_ID: str = "shunk031/aesthetics-predictor-v1-vit-large-patch14"
 # CLIP model for keyword-based filtering
 CLIP_MODEL_ID: str = "openai/clip-vit-large-patch14"
 
-DEFAULT_MIN_SCORE: float = 5.0
+DEFAULT_MIN_SCORE: float = 6.0
 
-# Default keywords to avoid (you can override via --block-keyword)
-DEFAULT_BLOCK_KEYWORDS: List[str] = [
+# Default keywords to avoid. Split into buckets so thresholds/prompts can differ.
+DEFAULT_BLOCK_KEYWORDS_GENERAL: List[str] = [
     "car",
     "tank",
     "weapon",
     "gun",
     "rifle",
+    "pistol",
     "mech",
     "robot",
     "soldier",
     "war",
+    "zombie",
+    "monster",
+    "bike",
+    "motorcycle",
+    "motorbike",
+    "wireframe",
+    "game asset",
+    "albedo",
+    "diffuse",
+    "normal map",
+    "roughness",
+    "metallic",
+    "ao map",
+    "specular",
+    "height map",
 ]
-DEFAULT_BLOCK_THRESHOLD: float = 0.30
+DEFAULT_BLOCK_KEYWORDS_NSFW: List[str] = [
+    "nude",
+    "naked",
+    "nsfw",
+    "porn",
+    "explicit",
+    "gore",
+    "violence",
+    "sex",
+    "sexual",
+    "erotic",
+    "hardcore",
+    "hentai",
+    "breast",
+    "boobs",
+    "nipple",
+    "genitals",
+    "penis",
+    "vagina",
+    "cum",
+    "semen",
+    "orgasm",
+    "ejaculation",
+    "masturbation",
+    "fetish",
+    "xxx",
+    "escort",
+    "onlyfans",
+    "strip",
+    "camgirl",
+]
+
+DEFAULT_BLOCK_THRESHOLD_GENERAL: float = 0.80
+DEFAULT_BLOCK_THRESHOLD_NSFW: float = 0.70
 
 # If True, destination dir is wiped before adding new images
 CLEAR_DEST: bool = True
@@ -128,10 +177,40 @@ def get_aesthetic_score(path: Path) -> float:
     return float(score_tensor.squeeze().item())
 
 
+def build_clip_prompts(keywords: List[str], context: str = "general") -> List[str]:
+    """
+    Build text prompts for CLIP given keywords and a context.
+    Context can be "general" (vehicles/war/etc.) or "nsfw" for explicit content.
+    """
+    if not keywords:
+        return []
+
+    if context == "nsfw":
+        templates = [
+            "an explicit photo of {}",
+            "a pornographic image of {}",
+            "an nsfw depiction of {}",
+            "a nude photo of {}",
+            "a naked person with {}",
+        ]
+    else:
+        templates = [
+            "a photo of {}",
+            "an illustration of {}",
+            "a realistic render of {}",
+        ]
+
+    prompts: List[str] = []
+    for kw in keywords:
+        prompts.extend(template.format(kw) for template in templates)
+    return prompts
+
+
 def image_matches_block_keywords(
     path: Path,
     keywords: List[str],
     threshold: float,
+    context: str = "general",
 ) -> bool:
     """
     Use CLIP to estimate whether an image matches any of the blocked keywords.
@@ -139,12 +218,11 @@ def image_matches_block_keywords(
     We compute CLIP similarity between the image and a set of prompts derived
     from the keywords, then treat high-probability matches as "blocked".
     """
-    if not keywords:
+    prompts = build_clip_prompts(keywords, context=context)
+    if not prompts:
         return False
 
     model, processor = load_clip_model()
-
-    prompts = [f"a {kw}" for kw in keywords]
 
     processor_typed = cast(Any, processor)
 
@@ -184,7 +262,9 @@ def filter_wallpapers(
     dest_dir: Path,
     min_score: float,
     block_keywords: List[str] | None = None,
-    block_threshold: float = DEFAULT_BLOCK_THRESHOLD,
+    block_threshold: float = DEFAULT_BLOCK_THRESHOLD_GENERAL,
+    block_keywords_nsfw: List[str] | None = None,
+    block_threshold_nsfw: float = DEFAULT_BLOCK_THRESHOLD_NSFW,
     dry_run: bool = False,
 ) -> None:
     """
@@ -214,9 +294,15 @@ def filter_wallpapers(
     )
     if block_keywords:
         print(
-            f"[info] Blocking images that look like: "
+            f"[info] Blocking images that look like (general): "
             f"{', '.join(block_keywords)} "
             f"(threshold {block_threshold:.2f})"
+        )
+    if block_keywords_nsfw:
+        print(
+            f"[info] Blocking images that look like (nsfw): "
+            f"{', '.join(block_keywords_nsfw)} "
+            f"(threshold {block_threshold_nsfw:.2f})"
         )
 
     kept = 0
@@ -224,11 +310,22 @@ def filter_wallpapers(
         # First, apply keyword-based blocking if requested
         if block_keywords:
             try:
-                if image_matches_block_keywords(path, block_keywords, block_threshold):
-                    print(f"[block] keyword match  {path.name}")
+                if image_matches_block_keywords(
+                    path, block_keywords, block_threshold, context="general"
+                ):
+                    print(f"[block] general keyword match  {path.name}")
                     continue
             except Exception as exc:  # pragma: no cover - defensive
                 print(f"[warn] Keyword check failed for {path.name}: {exc}")
+        if block_keywords_nsfw:
+            try:
+                if image_matches_block_keywords(
+                    path, block_keywords_nsfw, block_threshold_nsfw, context="nsfw"
+                ):
+                    print(f"[block] nsfw keyword match  {path.name}")
+                    continue
+            except Exception as exc:  # pragma: no cover - defensive
+                print(f"[warn] NSFW keyword check failed for {path.name}: {exc}")
 
         # Then apply aesthetics score threshold
         try:
@@ -261,16 +358,16 @@ def parse_args() -> argparse.Namespace:  # pragma: no cover
     parser.add_argument(
         "source",
         nargs="?",
-        default=Path.cwd() / "_curated",
+        default=Path.cwd() / "curated",
         type=Path,
-        help="Source directory of curated wallpapers (default: ./_curated).",
+        help="Source directory of curated wallpapers (default: ./curated).",
     )
     parser.add_argument(
         "dest",
         nargs="?",
-        default=Path.cwd() / "_curated_aesthetic",
+        default=Path.cwd() / "filtered",
         type=Path,
-        help="Destination directory for high-scoring wallpapers (default: ./_curated_aesthetic).",
+        help="Destination directory for high-scoring wallpapers (default: ./filtered).",
     )
     parser.add_argument(
         "--min-score",
@@ -288,13 +385,45 @@ def parse_args() -> argparse.Namespace:  # pragma: no cover
         ),
     )
     parser.add_argument(
+        "--block-keyword-general",
+        action="append",
+        help=(
+            "General (non-NSFW) keywords to avoid. "
+            "Overrides the default general list when provided."
+        ),
+    )
+    parser.add_argument(
+        "--block-keyword-nsfw",
+        action="append",
+        help=("NSFW/explicit keywords to avoid. Overrides the default NSFW list when provided."),
+    )
+    parser.add_argument(
         "--block-threshold",
         type=float,
-        default=DEFAULT_BLOCK_THRESHOLD,
+        default=None,
         help=(
             "Threshold on CLIP match probability above which an image is "
-            "considered to match a blocked keyword "
-            f"(default: {DEFAULT_BLOCK_THRESHOLD})."
+            "considered to match a blocked keyword. Higher = blocks fewer images; "
+            "lower = blocks more. If set, applies to both general and NSFW keywords."
+        ),
+    )
+    parser.add_argument(
+        "--block-threshold-general",
+        type=float,
+        default=DEFAULT_BLOCK_THRESHOLD_GENERAL,
+        help=(
+            "Threshold for general (vehicle/war/etc.) keywords "
+            f"(default: {DEFAULT_BLOCK_THRESHOLD_GENERAL}). "
+            "Higher = blocks fewer images; lower = blocks more."
+        ),
+    )
+    parser.add_argument(
+        "--block-threshold-nsfw",
+        type=float,
+        default=DEFAULT_BLOCK_THRESHOLD_NSFW,
+        help=(
+            f"Threshold for NSFW/explicit keywords (default: {DEFAULT_BLOCK_THRESHOLD_NSFW}). "
+            "Higher = blocks fewer images; lower = blocks more."
         ),
     )
     parser.add_argument(
@@ -310,7 +439,21 @@ def main() -> None:  # pragma: no cover
 
     # Use explicit block keywords if provided; otherwise fall back to defaults.
     block_keywords: List[str] | None = (
-        args.block_keyword if args.block_keyword else DEFAULT_BLOCK_KEYWORDS
+        args.block_keyword if args.block_keyword else args.block_keyword_general
+    )
+    if block_keywords is None:
+        block_keywords = DEFAULT_BLOCK_KEYWORDS_GENERAL
+
+    block_keywords_nsfw: List[str] | None = args.block_keyword_nsfw
+    if block_keywords_nsfw is None:
+        block_keywords_nsfw = DEFAULT_BLOCK_KEYWORDS_NSFW
+
+    # Support legacy --block-threshold by applying to both lists if provided.
+    block_threshold_general = (
+        args.block_threshold if args.block_threshold is not None else args.block_threshold_general
+    )
+    block_threshold_nsfw = (
+        args.block_threshold if args.block_threshold is not None else args.block_threshold_nsfw
     )
 
     filter_wallpapers(
@@ -318,7 +461,9 @@ def main() -> None:  # pragma: no cover
         dest_dir=args.dest,
         min_score=args.min_score,
         block_keywords=block_keywords,
-        block_threshold=args.block_threshold,
+        block_threshold=block_threshold_general,
+        block_keywords_nsfw=block_keywords_nsfw,
+        block_threshold_nsfw=block_threshold_nsfw,
         dry_run=bool(args.dry_run),
     )
 
