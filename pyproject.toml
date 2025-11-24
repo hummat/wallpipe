@@ -53,8 +53,8 @@ pythonVersion = "3.11"
 typeCheckingMode = "basic"
 reportMissingImports = "warning"
 reportMissingModuleSource = "warning"
-venvPath = "/home/matthias/.pyenv/versions"
-venv = "wallpipe"
+venvPath = "."
+venv = ".venv"
 
 [tool.coverage.run]
 source = ["."]
