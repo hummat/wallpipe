@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+env:
+  CUDA_VISIBLE_DEVICES: ""
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: |
+            requirements-dev.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          # CPU-only torch to keep CI light
+          pip install torch==2.3.1 --index-url https://download.pytorch.org/whl/cpu
+          pip install -r requirements-dev.txt
+          pip install pillow transformers simple-aesthetics-predictor
+
+      - name: Lint (ruff)
+        run: ruff check .
+
+      - name: Type check (pyright)
+        run: pyright
+
+      - name: Test (pytest)
+        run: pytest
