@@ -2,3 +2,6 @@ pytest
 ruff
 pyright
 pytest-cov
+pillow
+transformers
+simple-aesthetics-predictor
