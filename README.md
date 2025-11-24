@@ -67,16 +67,16 @@ Dev dependencies and runtime deps are declared in `pyproject.toml`; `requirement
   - `![Coverage](https://codecov.io/gh/<owner>/wallpipe/branch/main/graph/badge.svg)`
 
 ## Automation Ideas (cron)
-You can automate the pipeline with cron on a desktop/server:
+You can automate the pipeline with cron on a desktop/server. Example schedule:
 
-- Download monthly (1st of month at 02:00):  
-  `0 2 1 * * /path/to/venv/bin/python /path/to/wallpipe/download.py /path/to/downloaded >> /var/log/wallpipe-download.log 2>&1`
+- Download monthly (first Monday, 06:00):
+  `0 6 1-7 * 1 /path/to/venv/bin/python /path/to/wallpipe/download.py /path/to/downloaded >> /var/log/wallpipe-download.log 2>&1`
 
-- Curate weekly (Sundays at 03:00):  
-  `0 3 * * 0 /path/to/venv/bin/python /path/to/wallpipe/curate.py /path/to/downloaded /path/to/curated >> /var/log/wallpipe-curate.log 2>&1`
+- Curate weekly (Sundays at 15:00):
+  `0 15 * * 0 /path/to/venv/bin/python /path/to/wallpipe/curate.py /path/to/downloaded /path/to/curated --skip-bw --dedup-hamming 5 >> /var/log/wallpipe-curate.log 2>&1`
 
-- Filter weekly (Sundays at 03:30):  
-  `30 3 * * 0 /path/to/venv/bin/python /path/to/wallpipe/filter.py /path/to/curated /path/to/filtered --min-score 6.0 >> /var/log/wallpipe-filter.log 2>&1`
+- Filter weekly (Sundays at 20:00):
+  `0 20 * * 0 /path/to/venv/bin/python /path/to/wallpipe/filter.py /path/to/curated /path/to/filtered --min-score 6.0 >> /var/log/wallpipe-filter.log 2>&1`
 
 ### Keyword filtering & thresholds
 - Defaults block two buckets:
