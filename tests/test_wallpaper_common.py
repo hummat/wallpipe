@@ -93,3 +93,11 @@ def test_resolve_paths_allows_overrides(tmp_path, monkeypatch):
     assert paths["wallpaper_root"] == override_root
     assert paths["download_root"] == override_root / "dl"
     assert paths["curated_dir"] == override_root / "cur"
+
+
+def test_get_artist_sources_defaults(monkeypatch):
+    monkeypatch.delenv("WALLPIPE_CONFIG", raising=False)
+    wc = reload_wallpaper_common()
+    artists = wc.get_artist_sources()
+    assert "maciej_kuciara" in artists
+    assert isinstance(artists["maciej_kuciara"], list) and artists["maciej_kuciara"]

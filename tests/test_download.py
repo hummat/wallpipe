@@ -1,7 +1,7 @@
 import shutil
 import subprocess
 
-from download import run_gallery_dl
+from download import download_artists, run_gallery_dl
 
 
 def test_run_gallery_dl_adds_abort(monkeypatch, tmp_path):
@@ -36,3 +36,24 @@ def test_run_gallery_dl_allows_disable_abort(monkeypatch, tmp_path):
 
     assert "--abort" not in captured["cmd"]
     assert captured["cmd"][-1] == "http://example.com/bar"
+
+
+def test_download_artists_missing_binary(monkeypatch, tmp_path, capsys):
+    monkeypatch.setattr(shutil, "which", lambda _: None)
+    # Should print error and return early
+    download_artists({"artist": ["http://example.com/foo"]}, download_root=tmp_path)
+    out = capsys.readouterr().out
+    assert "gallery-dl` not found" in out
+
+
+def test_download_artists_calledprocess(monkeypatch, tmp_path, capsys):
+    monkeypatch.setattr(shutil, "which", lambda _: "/usr/bin/gallery-dl")
+
+    def fake_run(cmd, check):
+        raise subprocess.CalledProcessError(returncode=4, cmd=cmd)
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+    download_artists({"artist": ["http://example.com/foo"]}, download_root=tmp_path)
+    out = capsys.readouterr().out
+    assert "failed for artist" in out

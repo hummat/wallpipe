@@ -45,6 +45,7 @@
 - Use `apply_patch` for edits; keep comments minimal and purposeful.
 - Before running tooling, check `git diff --name-only` for `.py`/tooling changes.
 - Run `uv run ruff format/check`, `uv run pyright`, `uv run pytest` when Python code or tooling (pyproject, CI, requirements) is touched. For doc-only changes, skip these and state “tests not run (docs-only)” in the handoff.
+- When lint fixes are needed, prefer `uv run ruff check --fix` to auto-apply safe changes before manual edits.
 - When altering behavior, tooling, or workflow, update both `README.md` and `AGENTS.md` to keep user and contributor docs in sync.
 - Default artist list: maciej_kuciara now only ArtStation + Behance (DeviantArt inactive); keep examples consistent.
  - Codecov: CI uses Codecov action v5 with GitHub OIDC (no token needed); keep `id-token: write`. Step is `continue-on-error` and posts a PR comment on failure; investigate if uploads fail repeatedly.

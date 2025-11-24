@@ -112,6 +112,23 @@ def test_curate_artists_no_clear_keeps_existing(tmp_path, monkeypatch):
     assert names == ["foo__good.jpg", "keep.jpg"]
 
 
+def test_curate_artist_missing_dir(tmp_path, capsys):
+    download_root = tmp_path / "_downloaded"
+    curated_dir = tmp_path / "_curated"
+    curated_dir.mkdir(parents=True)
+
+    curate.curate_artist(
+        "missing",
+        download_root,
+        curated_dir,
+        min_saturation=None,
+        dedup_hamming=None,
+    )
+
+    out = capsys.readouterr().out
+    assert "No download dir for missing" in out
+
+
 def test_dedup_hamming_skips_near_duplicates(tmp_path, monkeypatch):
     download_root = tmp_path / "_downloaded"
     curated_dir = tmp_path / "_curated"
