@@ -56,4 +56,6 @@ Dev dependencies are listed in `requirements-dev.txt`.
 
 ## Continuous Integration
 - GitHub Actions runs on pushes to main/master and all pull requests.
-- Steps: install deps (CPU torch), `ruff check .`, `pyright`, `pytest`.
+- Steps: install deps (CPU torch), `ruff check .`, `pyright`, `pytest --cov` + Codecov upload.
+- Coverage badge (replace `<owner>` with your GitHub user/org):
+  - `![Coverage](https://codecov.io/gh/<owner>/wallpipe/branch/main/graph/badge.svg)`
