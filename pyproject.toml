@@ -1,0 +1,43 @@
+[project]
+name = "wallpipe"
+version = "0.0.0"
+description = "Wallpaper download/curate/filter pipeline"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+filterwarnings = [
+    "ignore:.*cudaGetDeviceCount.*:UserWarning",
+]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+src = ["."]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B"]
+ignore = []
+
+[tool.ruff.lint.isort]
+known-first-party = ["wallpaper_common"]
+
+[tool.pyright]
+include = ["."]
+exclude = ["__pycache__", ".git", ".venv"]
+pythonVersion = "3.11"
+typeCheckingMode = "basic"
+reportMissingImports = "warning"
+reportMissingModuleSource = "warning"
+venvPath = "/home/matthias/.pyenv/versions"
+venv = "wallpipe"
+
+[tool.coverage.run]
+source = ["."]
+omit = [
+    "tests/*",
+    "*/site-packages/*",
+    "__pycache__/*",
+    "*/_remote_module_non_scriptable.py",
+]
