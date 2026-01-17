@@ -1,5 +1,10 @@
 # Repository Guidelines
 
+Read relevant `docs/agent/` files before proceeding:
+- `workflow.md` — **read before starting any feature** (issues, branching, PRs)
+
+---
+
 ## Project Structure & Module Organization
 - Core scripts: `download.py`, `curate.py`, `filter.py` (pipeline steps).
 - Shared helpers/config: `common.py`.
