@@ -30,3 +30,19 @@ Skip issue for typos, small fixes, docs-only changes. Branch + PR is still recom
 ## Documentation Sync
 
 When altering behavior, tooling, or workflow, update both `README.md` and `AGENTS.md` to keep user and contributor docs in sync.
+
+## Labels
+
+Defined in `.github/labels.yml`, synced automatically via `sync-labels.yml` workflow.
+
+| Label | Use for |
+|-------|---------|
+| `bug` | Bug reports (auto-applied by template) |
+| `enhancement` | Feature requests (auto-applied by template) |
+| `documentation` | Docs-only changes |
+| `question` | Questions needing clarification |
+| `good first issue` | Newcomer-friendly tasks |
+| `help wanted` | Needs external contribution |
+| `wontfix` | Won't be addressed |
+| `duplicate` | Already exists |
+| `invalid` | Not valid/applicable |
